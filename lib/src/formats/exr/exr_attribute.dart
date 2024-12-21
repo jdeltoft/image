@@ -1,5 +1,7 @@
+import '../../util/_internal.dart';
 import '../../util/input_buffer.dart';
 
+@internal
 class ExrAttribute {
   String name;
   String type;

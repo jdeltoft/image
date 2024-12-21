@@ -1,3 +1,205 @@
+## 4.5.2 - December 19, 2024
+
+- Reduce Min SDK version to 3.0.
+
+## 4.5.1 - December 18, 2024
+
+- Make image library compatible with archive 3.x
+
+## 4.5.0 - December 14, 2024
+
+- Fix gif animation decoder
+- Add ConstColorRgba8, ConstColorRgb8 for const color creation.
+
+## 4.4.0 - December 12, 2024
+
+- Upgrade to Archive 4.0 dependency
+
+## 4.3.0 - October 15, 2024
+
+- Fix exceptions loading some PSD files.
+- Fix trim for palette images.
+- Fix ICC decompression.
+- Add physical size handling to PNG.
+- Fix TIFF out of bounds error.
+
+## 4.2.0 - May 22, 2024
+
+- Fix decoding EXIF data from WebP.
+- Add ContrastMode.scurve to contrast filter.
+- Filter functions will auto-convert palette images
+- Add BinaryQuantizer.
+- Fix ditherImage not returning dithered image.
+- Fix APNG decoding.
+- drawString should use alpha color.
+- Improve performance of animated GIF decoding.
+- Fix TIFF tile decoding
+- Add solarize filter function
+- Fix decoding TIFF with ZLIB decoding
+- Add PNM format decoder.
+- Add support for uint16 palettes.
+
+## 4.1.7 - February 10, 2024
+
+- JPEG images will finish decoding even if the file is incomplete or has errors.
+- Fix performance bug with Image.getBytes
+
+## 4.1.6 - January 31, 2024
+
+- Incomplete or JPEGs with errors will now finish loading. 
+
+## 4.1.5 - January 31, 2024
+
+- Optimize copying bytes in Image.fromBytes
+- 2 channel images are treated as Luminance-Alpha
+
+## 4.1.4 - January 12, 2024
+
+- Fix Image.getBytes when ChannelOrder has a different number of channels than the image.
+- copyResize command accepts maintainAspect and backgroundColor args.
+- Fix EXIF decoder when image has bad IFD offsets.
+- Improve drawString handling of new line characters when wrap is true.
+- Improve GIF animation decoding when each frame has its own palette. 
+
+## 4.1.3 - September 25, 2023
+
+- Fix crash in copyResize for non-nearest interpolation modes.
+
+## 4.1.2
+
+- No changes, removing unnecessary files in 4.1.1.
+
+## 4.1.1
+
+- Add maintainAspect and backgroundColor to copyResize to resize width and 
+height of an image, without stretching the source (using background color to pad).
+- drawString will word-wrap even when x or y is set.
+- Don't clamp brightness in adjustColor.
+
+## 4.1.0
+
+- Update pub dependencies.
+
+## 4.0.18 -
+
+- Fix reading 64-bit double EXIF values.
+
+## 4.0.17 - May 06, 2023
+
+- Fix resizing multi-frame palette images.
+- Fix transparency issue with encodeGif.  
+
+## 4.0.16 - April 27, 2023
+
+- Fix GIF decoder not decoding some animation files transparency and frame duration.
+- Fix default rowStride for Image.fromBytes.
+
+## 4.0.15 - February 11, 2023
+
+- Fix JPEG encoder for non uint8 format images.
+
+## 4.0.14 - February 11, 2023
+
+- Use Image.backgroundColor for copyRotate, copyCropCircle, and other functions that reveal background pixels. 
+
+## 4.0.13 - January 30, 2023
+
+- Fix transform functions for palette images.
+
+## 4.0.12 - January 23, 2023
+
+- Fix EXIF parsing little endian data
+- Fix bounds errors with filter functions and palette images.
+- Fix BMP encoding palette rgba images by converting them to 32-bit rgba.
+
+## 4.0.11 - January 22, 2023
+
+- Add decodeJpgExif and injectJpgExif functions to process JPG exif data without needing to decode the image.
+- Fix EXIF parse exception from empty strings.
+- Fix EXIF string data not writing out null character.
+
+## 4.0.10 - January 1, 2023
+
+- Fix last-minute typo from previous release.
+
+## 4.0.9 - January 1, 2023
+
+- Fix offset error with BMP encoder for images with < 8 bits per pixel
+- Improve quality of converting 3-channel image to 1-channel.
+
+## 4.0.8 - January 08, 2023
+
+- Fix ChannelOrder.bgra.
+- Add Image.hasAlpha getter property that will be true if the Image has an alpha channel. 
+
+## 4.0.7 - January 05, 2023
+
+- Fix Image.getRangeIterator skipping last line.
+
+## 4.0.6 - January 04, 2023
+
+- `Image.remapChannels(ChannelOrder order)` to remap the order of channels from rgb to bgr, etc.
+- `Image.getBytes({ChannelOrder? order})` will return the image data, optionally reordering the channels.
+- Image.fromBytes can take an optional `ChannelOrder? order` named arg to specify the channel order of the input data. 
+
+## 4.0.5 - January 01, 2023
+
+- Improved antialiasing for drawLine
+- Add antialias arg for drawCircle, fillCircle.
+- Added radius argument to drawRect, fillRect, copyCrop, and copyResizeCropSquare to support rounded rectangles.
+- Add Image.getPixelClamped method.
+- Added TGA decoder 8-bit, 16-bit, 32-bit, and RLE compression modes.
+
+## 4.0.4 - December 31, 2022
+
+- Fix for animated PNG with palette images, which needed a global palette for all frames.
+- Fix TIFF encoder for palette images.
+- Cleaned up EXIF classes.
+
+## 4.0.3 - December 30, 2022
+
+- Fix for encoding GIF transparency.
+
+## 4.0.2 - December 30, 2022
+
+- No changes, dart formatted code and fix documentation link.
+
+## 4.0.1 - December 30, 2022
+
+- Use strict analyzer settings, clean up warnings.
+
+## 4.0.0 - December 30, 2022
+
+- Major update of the Dart Image Library. Includes support for:
+  - Major overhaul of the API. Dart has changed a lot in the 10 years since this library was written,
+    so the API has been modernized. 
+  - Flexible ImageData, with support for 1, 2, 4, 8, 16, and 32 bit images, and 1-4 channels per pixel.
+  - 16, 32, and 64-bit floating-point format images.
+  - 8, 16, and 32-bit integer format images.
+  - Palette images with 1, 2, 4, and 8-bit colors.
+  - Improved pixel access API.
+  - Merged HDR and Animation functionality into the single Image class.
+  - New Command API with support for executing on Isolate threads.
+  - New filters and drawing commands.
+
+## 3.3.0 - December 29, 2022
+
+- Improved EXIF data management
+- Fix character code issue with BitmapFont.
+- This is the last 3.x update before the big 4.0 release.
+
+## 3.2.2 - October 15, 2022
+
+- Fix transparency issue with animated GIF images.
+
+## 3.2.1 - October 15, 2022
+
+- Fixes for APNG: fix exception from some APNG files, and some frames were not composited correctly.
+
+## 3.2.0 - May 18, 2022
+
+- Update SDK dependency to >2.15.0 and XML package dependency to >6.0.0
+
 ## 3.1.3 - February 17, 2022
 
 - Optimize Image.getWhiteBalance function, add asDouble argument to return double value.

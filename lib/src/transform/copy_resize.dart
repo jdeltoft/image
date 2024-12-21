@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import '../color.dart';
-import '../image.dart';
-import '../image_exception.dart';
-import '../util/interpolation.dart';
+import '../color/color.dart';
+import '../image/image.dart';
+import '../image/interpolation.dart';
+import '../util/image_exception.dart';
 import 'bake_orientation.dart';
 
-/// Returns a resized copy of the [src] image.
+/// Returns a resized copy of the [src] Image.
 /// If [height] isn't specified, then it will be determined by the aspect
 /// ratio of [src] and [width].
 /// If [width] isn't specified, then it will be determined by the aspect ratio
@@ -14,88 +14,157 @@ import 'bake_orientation.dart';
 Image copyResize(Image src,
     {int? width,
     int? height,
+    bool? maintainAspect,
+    Color? backgroundColor,
     Interpolation interpolation = Interpolation.nearest}) {
   if (width == null && height == null) {
     throw ImageException('Invalid size');
   }
 
-  src = bakeOrientation(src);
-
-  // this block sets [width] and [height] if null or negative.
-  if (height == null || height <= 0) {
-    height = (width! * (src.height / src.width)).toInt();
+  // You can't interpolate index pixels
+  if (src.hasPalette) {
+    interpolation = Interpolation.nearest;
   }
 
+  if (src.exif.imageIfd.hasOrientation && src.exif.imageIfd.orientation != 1) {
+    src = bakeOrientation(src);
+  }
+
+  var x1 = 0;
+  var y1 = 0;
+  var x2 = 0;
+  var y2 = 0;
+
+  // this block sets [width] and [height] if null or negative.
+  if (width != null && height != null && maintainAspect == true) {
+    x1 = 0;
+    x2 = width;
+    final srcAspect = src.height / src.width;
+    final h = (width * srcAspect).toInt();
+    final dy = (height - h) ~/ 2;
+    y1 = dy;
+    y2 = y1 + h;
+    if (y1 < 0 || y2 > height) {
+      y1 = 0;
+      y2 = height;
+      final srcAspect = src.width / src.height;
+      final w = (height * srcAspect).toInt();
+      final dx = (width - w) ~/ 2;
+      x1 = dx;
+      x2 = x1 + w;
+    }
+  } else {
+    maintainAspect = false;
+  }
+
+  if (height == null || height <= 0) {
+    height = (width! * (src.height / src.width)).round();
+  }
   if (width == null || width <= 0) {
-    width = (height * (src.width / src.height)).toInt();
+    width = (height * (src.width / src.height)).round();
+  }
+
+  final w = maintainAspect! ? x2 - x1 : width;
+  final h = maintainAspect ? y2 - y1 : height;
+
+  if (!maintainAspect) {
+    x1 = 0;
+    x2 = width;
+    y1 = 0;
+    y2 = height;
   }
 
   if (width == src.width && height == src.height) {
     return src.clone();
   }
 
-  final dst = Image(width, height,
-      channels: src.channels, exif: src.exif, iccp: src.iccProfile);
+  final scaleX = Int32List(w);
+  final dx = src.width / w;
+  for (var x = 0; x < w; ++x) {
+    scaleX[x] = (x * dx).toInt();
+  }
 
-  final dy = src.height / height;
-  final dx = src.width / width;
+  Image? firstFrame;
+  final numFrames = src.numFrames;
+  for (var i = 0; i < numFrames; ++i) {
+    final frame = src.frames[i];
+    final dst = Image.fromResized(frame,
+        width: width, height: height, noAnimation: true);
+    firstFrame?.addFrame(dst);
+    firstFrame ??= dst;
 
-  if (interpolation == Interpolation.average) {
-    final sData = src.getBytes();
-    final sw4 = src.width * 4;
+    final dy = frame.height / h;
+    final dx = frame.width / w;
 
-    for (var y = 0; y < height; ++y) {
-      final y1 = (y * dy).toInt();
-      var y2 = ((y + 1) * dy).toInt();
-      if (y2 == y1) {
-        y2++;
-      }
+    if (maintainAspect && backgroundColor != null) {
+      dst.clear(backgroundColor);
+    }
 
-      for (var x = 0; x < width; ++x) {
-        final x1 = (x * dx).toInt();
-        var x2 = ((x + 1) * dx).toInt();
-        if (x2 == x1) {
-          x2++;
+    if (interpolation == Interpolation.average) {
+      for (var y = 0; y < h; ++y) {
+        final ay1 = (y * dy).toInt();
+        var ay2 = ((y + 1) * dy).toInt();
+        if (ay2 == ay1) {
+          ay2++;
         }
 
-        var r = 0;
-        var g = 0;
-        var b = 0;
-        var a = 0;
-        var np = 0;
-        for (var sy = y1; sy < y2; ++sy) {
-          var si = sy * sw4 + x1 * 4;
-          for (var sx = x1; sx < x2; ++sx, ++np) {
-            r += sData[si++];
-            g += sData[si++];
-            b += sData[si++];
-            a += sData[si++];
+        for (var x = 0; x < w; ++x) {
+          final ax1 = (x * dx).toInt();
+          var ax2 = ((x + 1) * dx).toInt();
+          if (ax2 == ax1) {
+            ax2++;
+          }
+
+          num r = 0;
+          num g = 0;
+          num b = 0;
+          num a = 0;
+          var np = 0;
+          for (var sy = ay1; sy < ay2; ++sy) {
+            for (var sx = ax1; sx < ax2; ++sx, ++np) {
+              final s = frame.getPixel(sx, sy);
+              r += s.r;
+              g += s.g;
+              b += s.b;
+              a += s.a;
+            }
+          }
+          dst.setPixel(
+              x1 + x, y1 + y, dst.getColor(r / np, g / np, b / np, a / np));
+        }
+      }
+    } else if (interpolation == Interpolation.nearest) {
+      if (frame.hasPalette) {
+        for (var y = 0; y < h; ++y) {
+          final y2 = (y * dy).toInt();
+          for (var x = 0; x < w; ++x) {
+            dst.setPixelIndex(
+                x1 + x, y1 + y, frame.getPixelIndex(scaleX[x], y2));
           }
         }
-        dst.setPixel(x, y, getColor(r ~/ np, g ~/ np, b ~/ np, a ~/ np));
+      } else {
+        for (var y = 0; y < h; ++y) {
+          final y2 = (y * dy).toInt();
+          for (var x = 0; x < w; ++x) {
+            dst.setPixel(x1 + x, y1 + y, frame.getPixel(scaleX[x], y2));
+          }
+        }
       }
-    }
-  } else if (interpolation == Interpolation.nearest) {
-    final scaleX = Int32List(width);
-    for (var x = 0; x < width; ++x) {
-      scaleX[x] = (x * dx).toInt();
-    }
-    for (var y = 0; y < height; ++y) {
-      final y2 = (y * dy).toInt();
-      for (var x = 0; x < width; ++x) {
-        dst.setPixel(x, y, src.getPixel(scaleX[x], y2));
-      }
-    }
-  } else {
-    // Copy the pixels from this image to the new image.
-    for (var y = 0; y < height; ++y) {
-      final y2 = (y * dy);
-      for (var x = 0; x < width; ++x) {
-        final x2 = (x * dx);
-        dst.setPixel(x, y, src.getPixelInterpolate(x2, y2, interpolation));
+    } else {
+      // Copy the pixels from this image to the new image.
+      for (var y = 0; y < h; ++y) {
+        final sy2 = y * dy;
+        for (var x = 0; x < w; ++x) {
+          final sx2 = x * dx;
+          dst.setPixel(
+              x,
+              y,
+              frame.getPixelInterpolate(x1 + sx2, y1 + sy2,
+                  interpolation: interpolation));
+        }
       }
     }
   }
 
-  return dst;
+  return firstFrame!;
 }

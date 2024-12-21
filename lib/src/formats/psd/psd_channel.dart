@@ -1,25 +1,26 @@
+import 'dart:math';
 import 'dart:typed_data';
 
-import '../../image_exception.dart';
+import '../../util/image_exception.dart';
 import '../../util/input_buffer.dart';
 
 class PsdChannel {
-  static const RED = 0;
-  static const GREEN = 1;
-  static const BLUE = 2;
-  static const BLACK = 3;
-  static const ALPHA = -1;
-  static const MASK = -2;
-  static const REAL_MASK = -3;
+  static const red = 0;
+  static const green = 1;
+  static const blue = 2;
+  static const black = 3;
+  static const alpha = -1;
+  static const mask = -2;
+  static const realMask = -3;
 
-  static const COMPRESS_NONE = 0;
-  static const COMPRESS_RLE = 1;
-  static const COMPRESS_ZIP = 2;
-  static const COMPRESS_ZIP_PREDICTOR = 3;
+  static const compressNone = 0;
+  static const compressRle = 1;
+  static const compressZip = 2;
+  static const compressZipPredictor = 3;
 
   int id;
   int? dataLength;
-  late Uint8List data;
+  Uint8List? data;
 
   PsdChannel(this.id, this.dataLength);
 
@@ -38,13 +39,16 @@ class PsdChannel {
 
   void readPlane(InputBuffer input, int width, int height, int? bitDepth,
       [int? compression, Uint16List? lineLengths, int planeNum = 0]) {
+    if (input.length < 2) {
+      return;
+    }
     compression ??= input.readUint16();
 
     switch (compression) {
-      case COMPRESS_NONE:
+      case compressNone:
         _readPlaneUncompressed(input, width, height, bitDepth!);
         break;
-      case COMPRESS_RLE:
+      case compressRle:
         lineLengths ??= _readLineLengths(input, height);
         _readPlaneRleCompressed(
             input, width, height, bitDepth!, lineLengths, planeNum);
@@ -70,7 +74,7 @@ class PsdChannel {
     }
     if (len > input.length) {
       data = Uint8List(len);
-      data.fillRange(0, len, 255);
+      data!.fillRange(0, len, 255);
       return;
     }
 
@@ -88,29 +92,40 @@ class PsdChannel {
     var pos = 0;
     var lineIndex = planeNum * height;
     if (lineIndex >= lineLengths.length) {
-      data.fillRange(0, data.length, 255);
+      data!.fillRange(0, data!.length, 255);
       return;
     }
 
     for (var i = 0; i < height; ++i) {
       final len = lineLengths[lineIndex++];
       final s = input.readBytes(len);
-      _decodeRLE(s, data, pos);
+      _decodeRLE(s, data!, pos);
       pos += width;
     }
   }
 
   void _decodeRLE(InputBuffer src, Uint8List dst, int dstIndex) {
     while (!src.isEOS) {
-      var n = src.readInt8();
+      var n = 0;
+      n = src.readInt8();
       if (n < 0) {
         n = 1 - n;
+        if (src.isEOS) {
+          break;
+        }
         final b = src.readByte();
+        if ((dstIndex + n) > dst.length) {
+          n = dst.length - dstIndex;
+        }
         for (var i = 0; i < n; ++i) {
           dst[dstIndex++] = b;
         }
       } else {
         n++;
+        if ((dstIndex + n) > dst.length) {
+          n = dst.length - dstIndex;
+        }
+        n = min(n, src.length);
         for (var i = 0; i < n; ++i) {
           dst[dstIndex++] = src.readByte();
         }

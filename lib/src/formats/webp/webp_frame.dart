@@ -1,20 +1,16 @@
-import '../../internal/internal.dart';
+import '../../util/_internal.dart';
 import '../../util/input_buffer.dart';
 
 // Decodes a frame from a WebP animation.
 class WebPFrame {
   // The x coordinate of the upper left corner of the frame.
   int x;
-
   // The y coordinate of the upper left corner of the frame.
   int y;
-
   // The width of the frame.
   int width;
-
   // The height of the frame.
   int height;
-
   // How long the frame should be displayed, in milliseconds.
   int duration;
 
@@ -31,11 +27,10 @@ class WebPFrame {
         height = input.readUint24() + 1,
         duration = input.readUint24() {
     final b = input.readByte();
-    _reserved = (b & 0x7F) >> 7;
+    _reserved = (b & 0x7f) >> 7;
     clearFrame = (b & 0x1) != 0;
-
     _framePosition = input.position;
-    _frameSize = size - _ANIMF_HEADER_SIZE;
+    _frameSize = size - _animFrameHeaderSize;
   }
 
   bool get isValid => _reserved == 0;
@@ -45,7 +40,7 @@ class WebPFrame {
   late int _frameSize;
 
   // Size of an animation frame header.
-  static const _ANIMF_HEADER_SIZE = 16;
+  static const _animFrameHeaderSize = 16;
 }
 
 @internal

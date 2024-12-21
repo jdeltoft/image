@@ -1,58 +1,98 @@
-import '../../image.dart' show Point;
-import '../image.dart';
+import '../image/image.dart';
+import '../util/_circle_test.dart';
 
 /// Returns a cropped copy of [src].
-Image copyCrop(Image src, int x, int y, int w, int h) {
+Image copyCrop(Image src,
+    {required int x,
+    required int y,
+    required int width,
+    required int height,
+    num radius = 0,
+    bool antialias = true}) {
   // Make sure crop rectangle is within the range of the src image.
   x = x.clamp(0, src.width - 1).toInt();
   y = y.clamp(0, src.height - 1).toInt();
-  if (x + w > src.width) {
-    w = src.width - x;
+  if (x + width > src.width) {
+    width = src.width - x;
   }
-  if (y + h > src.height) {
-    h = src.height - y;
-  }
-
-  final dst =
-      Image(w, h, channels: src.channels, exif: src.exif, iccp: src.iccProfile);
-
-  for (var yi = 0, sy = y; yi < h; ++yi, ++sy) {
-    for (var xi = 0, sx = x; xi < w; ++xi, ++sx) {
-      dst.setPixel(xi, yi, src.getPixel(sx, sy));
-    }
+  if (y + height > src.height) {
+    height = src.height - y;
   }
 
-  return dst;
-}
+  if (radius > 0 && src.hasPalette) {
+    src = src.convert(numChannels: src.numChannels);
+  }
 
-/// Returns a round cropped copy of [src].
-Image copyCropCircle(Image src, {int? radius, Point? center}) {
-  int min(num x, num y) => (x < y ? x : y).toInt();
-  final defaultRadius = min(src.width, src.height) ~/ 2;
-  radius ??= defaultRadius;
-  center ??= Point(src.width ~/ 2, src.height ~/ 2);
-  // Make sure center point is within the range of the src image
-  center.x = center.x.clamp(0, src.width - 1).toInt();
-  center.y = center.y.clamp(0, src.height - 1).toInt();
-  radius = radius < 1 ? defaultRadius : radius;
+  Image? firstFrame;
+  final numFrames = src.numFrames;
+  for (var i = 0; i < numFrames; ++i) {
+    final frame = src.frames[i];
+    final dst = firstFrame?.addFrame() ??
+        Image.fromResized(frame,
+            width: width, height: height, noAnimation: true);
+    firstFrame ??= dst;
 
-  final tlx = center.x.toInt() - radius; //topLeft.x
-  final tly = center.y.toInt() - radius; //topLeft.y
+    if (radius > 0) {
+      final rad = radius.round();
+      final rad2 = rad * rad;
+      final x1 = x;
+      final y1 = y;
+      final x2 = x + width;
+      final y2 = y + height;
+      final c1x = x1 + rad - 1;
+      final c1y = y1 + rad - 1;
+      final c2x = x2 - rad + 1;
+      final c2y = y1 + rad - 1;
+      final c3x = x2 - rad + 1;
+      final c3y = y2 - rad + 1;
+      final c4x = x1 + rad - 1;
+      final c4y = y2 - rad + 1;
 
-  final dst = Image(
-    radius * 2,
-    radius * 2,
-    iccp: src.iccProfile,
-  );
+      final iter = frame.getRange(x1, y1, width, height);
+      while (iter.moveNext()) {
+        final p = iter.current;
+        final px = p.x;
+        final py = p.y;
 
-  for (var yi = 0, sy = tly; yi < radius * 2; ++yi, ++sy) {
-    for (var xi = 0, sx = tlx; xi < radius * 2; ++xi, ++sx) {
-      if ((xi - radius) * (xi - radius) + (yi - radius) * (yi - radius) <=
-          radius * radius) {
-        dst.setPixel(xi, yi, src.getPixelSafe(sx, sy));
+        num a = 1;
+        if (px < c1x && py < c1y) {
+          a = circleTest(p, c1x, c1y, rad2, antialias: antialias);
+          if (a == 0) {
+            dst.setPixelRgba(p.x - x1, p.y - y1, 0, 0, 0, 0);
+            continue;
+          }
+        } else if (px > c2x && py < c2y) {
+          a = circleTest(p, c2x, c2y, rad2, antialias: antialias);
+          if (a == 0) {
+            dst.setPixelRgba(p.x - x1, p.y - y1, 0, 0, 0, 0);
+            continue;
+          }
+        } else if (px > c3x && py > c3y) {
+          a = circleTest(p, c3x, c3y, rad2, antialias: antialias);
+          if (a == 0) {
+            dst.setPixelRgba(p.x - x1, p.y - y1, 0, 0, 0, 0);
+            continue;
+          }
+        } else if (px < c4x && py > c4y) {
+          a = circleTest(p, c4x, c4y, rad2, antialias: antialias);
+          if (a == 0) {
+            dst.setPixelRgba(p.x - x1, p.y - y1, 0, 0, 0, 0);
+            continue;
+          }
+        }
+
+        if (a != 1) {
+          dst.getPixel(p.x - x1, p.y - y1).setRgba(p.r, p.g, p.b, p.a * a);
+        } else {
+          dst.setPixel(p.x - x1, p.y - y1, p);
+        }
+      }
+    } else {
+      for (final p in dst) {
+        p.set(frame.getPixel(x + p.x, y + p.y));
       }
     }
   }
 
-  return dst;
+  return firstFrame!;
 }

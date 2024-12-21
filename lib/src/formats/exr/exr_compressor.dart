@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import '../../image_exception.dart';
-import '../../internal/internal.dart';
+import '../../util/_internal.dart';
+import '../../util/image_exception.dart';
 import '../../util/input_buffer.dart';
 import 'exr_b44_compressor.dart';
 import 'exr_part.dart';
@@ -10,36 +10,32 @@ import 'exr_pxr24_compressor.dart';
 import 'exr_rle_compressor.dart';
 import 'exr_zip_compressor.dart';
 
-abstract class ExrCompressor {
-  static const NO_COMPRESSION = 0;
-  static const RLE_COMPRESSION = 1;
-  static const ZIPS_COMPRESSION = 2;
-  static const ZIP_COMPRESSION = 3;
-  static const PIZ_COMPRESSION = 4;
-  static const PXR24_COMPRESSION = 5;
-  static const B44_COMPRESSION = 6;
-  static const B44A_COMPRESSION = 7;
+@internal
+enum ExrCompressorType { none, rle, zips, zip, piz, pxr24, b44, b44a }
 
+@internal
+abstract class ExrCompressor {
   int decodedWidth = 0;
   int decodedHeight = 0;
 
-  factory ExrCompressor(int type, ExrPart hdr, int? maxScanLineSize,
+  factory ExrCompressor(
+      ExrCompressorType type, ExrPart hdr, int? maxScanLineSize,
       [int? numScanLines]) {
     switch (type) {
-      case RLE_COMPRESSION:
+      case ExrCompressorType.rle:
         return ExrRleCompressor(hdr, maxScanLineSize);
-      case ZIPS_COMPRESSION:
+      case ExrCompressorType.zips:
         return ExrZipCompressor(hdr, maxScanLineSize, numScanLines ?? 1);
-      case ZIP_COMPRESSION:
+      case ExrCompressorType.zip:
         return ExrZipCompressor(hdr, maxScanLineSize, numScanLines ?? 16);
-      case PIZ_COMPRESSION:
+      case ExrCompressorType.piz:
         return ExrPizCompressor(hdr, maxScanLineSize, numScanLines ?? 32);
-      case PXR24_COMPRESSION:
+      case ExrCompressorType.pxr24:
         return ExrPxr24Compressor(hdr, maxScanLineSize, numScanLines ?? 16);
-      case B44_COMPRESSION:
+      case ExrCompressorType.b44:
         return ExrB44Compressor(
             hdr, maxScanLineSize, numScanLines ?? 32, false);
-      case B44A_COMPRESSION:
+      case ExrCompressorType.b44a:
         return ExrB44Compressor(hdr, maxScanLineSize, numScanLines ?? 32, true);
       default:
         throw ImageException('Invalid compression type: $type');
@@ -47,20 +43,20 @@ abstract class ExrCompressor {
   }
 
   factory ExrCompressor.tile(
-      int type, int tileLineSize, int numTileLines, ExrPart hdr) {
+      ExrCompressorType type, int tileLineSize, int numTileLines, ExrPart hdr) {
     switch (type) {
-      case RLE_COMPRESSION:
-        return ExrRleCompressor(hdr, (tileLineSize * numTileLines));
-      case ZIPS_COMPRESSION:
-      case ZIP_COMPRESSION:
+      case ExrCompressorType.rle:
+        return ExrRleCompressor(hdr, tileLineSize * numTileLines);
+      case ExrCompressorType.zips:
+      case ExrCompressorType.zip:
         return ExrZipCompressor(hdr, tileLineSize, numTileLines);
-      case PIZ_COMPRESSION:
+      case ExrCompressorType.piz:
         return ExrPizCompressor(hdr, tileLineSize, numTileLines);
-      case PXR24_COMPRESSION:
+      case ExrCompressorType.pxr24:
         return ExrPxr24Compressor(hdr, tileLineSize, numTileLines);
-      case B44_COMPRESSION:
+      case ExrCompressorType.b44:
         return ExrB44Compressor(hdr, tileLineSize, numTileLines, false);
-      case B44A_COMPRESSION:
+      case ExrCompressorType.b44a:
         return ExrB44Compressor(hdr, tileLineSize, numTileLines, true);
       default:
         throw ImageException('Invalid compression type: $type');

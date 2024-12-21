@@ -1,39 +1,44 @@
 import 'dart:typed_data';
-import '../../internal/internal.dart';
+
+import '../../color/color.dart';
+import '../../util/_internal.dart';
 import '../../util/input_buffer.dart';
 import '../decode_info.dart';
 import 'webp_frame.dart';
 
-// Features gathered from the bitstream
-class WebPInfo extends DecodeInfo {
-  // enum Format
-  static const FORMAT_UNDEFINED = 0;
-  static const FORMAT_LOSSY = 1;
-  static const FORMAT_LOSSLESS = 2;
-  static const FORMAT_ANIMATED = 3;
+enum WebPFormat { undefined, lossy, lossless, animated }
 
-  // True if the bitstream contains an alpha channel.
+/// Features gathered from the bitstream
+class WebPInfo implements DecodeInfo {
+  @override
+  int width = 0;
+  @override
+  int height = 0;
+  @override
+  Color? backgroundColor;
+
+  /// True if the bitstream contains an alpha channel.
   bool hasAlpha = false;
 
-  // True if the bitstream is an animation.
+  /// True if the bitstream is an animation.
   bool hasAnimation = false;
 
-  // 0 = undefined (/mixed), 1 = lossy, 2 = lossless, 3 = animated
-  int format = FORMAT_UNDEFINED;
+  /// 0 = undefined (/mixed), 1 = lossy, 2 = lossless, 3 = animated
+  WebPFormat format = WebPFormat.undefined;
 
-  // ICCP data.
+  /// ICCP data.
   Uint8List? iccp;
 
-  // EXIF data string.
+  /// EXIF data string.
   String exif = '';
 
-  // XMP data string.
+  /// XMP data string.
   String xmp = '';
 
-  // How many times the animation should loop.
+  /// How many times the animation should loop.
   int animLoopCount = 0;
 
-  // Information about each animation frame.
+  /// Information about each animation frame.
   List<WebPFrame> frames = [];
 
   @override

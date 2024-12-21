@@ -1,7 +1,13 @@
+import '../../color/color.dart';
 import '../decode_info.dart';
 
-class JpegInfo extends DecodeInfo {
-  // The number of frames that can be decoded.
+class JpegInfo implements DecodeInfo {
+  @override
+  int width = 0;
+  @override
+  int height = 0;
   @override
   int get numFrames => 1;
+  @override
+  Color? get backgroundColor => null;
 }

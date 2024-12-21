@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
-import '../image_exception.dart';
-import '../internal/bit_operators.dart';
+import 'bit_utils.dart';
+import 'image_exception.dart';
 
 /// A buffer that can be read as a stream of bytes.
 class InputBuffer {
@@ -16,14 +17,16 @@ class InputBuffer {
   InputBuffer(this.buffer,
       {this.bigEndian = false, this.offset = 0, int? length})
       : start = offset,
-        end = (length == null) ? buffer.length : offset + length;
+        end = min(
+            buffer.length, (length == null) ? buffer.length : offset + length);
 
   /// Create a copy of [other].
   InputBuffer.from(InputBuffer other, {int offset = 0, int? length})
       : buffer = other.buffer,
         offset = other.offset + offset,
         start = other.start,
-        end = (length == null) ? other.end : other.offset + offset + length,
+        end = min(other.buffer.length,
+            (length == null) ? other.end : other.offset + offset + length),
         bigEndian = other.bigEndian;
 
   ///  The current read position relative to the start of the buffer.
@@ -44,7 +47,7 @@ class InputBuffer {
   int operator [](int index) => buffer[offset + index];
 
   /// Set a buffer element relative to the current position.
-  operator []=(int index, int value) => buffer[offset + index] = value;
+  void operator []=(int index, int value) => buffer[offset + index] = value;
 
   /// Copy data from [other] to this buffer, at [start] offset from the
   /// current read position, and [length] number of bytes. [offset] is
@@ -83,9 +86,8 @@ class InputBuffer {
   /// returned is relative to the start of the buffer, or -1 if the [value]
   /// was not found.
   int indexOf(int value, [int offset = 0]) {
-    for (var i = this.offset + offset, end = this.offset + length;
-        i < end;
-        ++i) {
+    final end = this.offset + length;
+    for (var i = this.offset + offset; i < end; ++i) {
       if (buffer[i] == value) {
         return i - start;
       }
@@ -127,13 +129,27 @@ class InputBuffer {
         }
         codes.add(c);
       }
-      throw ImageException('EOF reached without finding string terminator');
+      throw ImageException(
+          'EOF reached without finding string terminator (length: $len)');
     }
 
     final s = readBytes(len);
     final bytes = s.toUint8List();
     final str = String.fromCharCodes(bytes);
     return str;
+  }
+
+  String readStringLine([int maxLength = 256]) {
+    final codes = <int>[];
+    while (!isEOS) {
+      final c = readByte();
+      codes.add(c);
+      if (c == 10 || codes.length >= maxLength) {
+        // '\n'
+        return String.fromCharCodes(codes);
+      }
+    }
+    return String.fromCharCodes(codes);
   }
 
   /// Read a null-terminated UTF-8 string.
@@ -146,7 +162,7 @@ class InputBuffer {
       }
       codes.add(c);
     }
-    throw ImageException('EOF reached without finding string terminator');
+    return utf8.decode(codes, allowMalformed: true);
   }
 
   /// Read a 16-bit word from the stream.
@@ -228,7 +244,7 @@ class InputBuffer {
     if (buffer is Uint8List) {
       return toUint8List(offset, length);
     }
-    final s = start + offset + offset;
+    final s = start + this.offset + offset;
     final e = (length <= 0) ? end : s + length;
     return buffer.sublist(s, e);
   }

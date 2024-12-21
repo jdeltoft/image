@@ -1,9 +1,11 @@
-import '../animation.dart';
-import '../image.dart';
-import '../image_exception.dart';
+import 'dart:typed_data';
+
+import '../image/image.dart';
+import '../util/image_exception.dart';
 import '../util/input_buffer.dart';
 import 'decode_info.dart';
 import 'decoder.dart';
+import 'image_format.dart';
 import 'jpeg/jpeg_data.dart';
 import 'jpeg/jpeg_info.dart';
 
@@ -12,15 +14,17 @@ class JpegDecoder extends Decoder {
   JpegInfo? info;
   InputBuffer? input;
 
+  @override
+  ImageFormat get format => ImageFormat.jpg;
+
   /// Is the given file a valid JPEG image?
   @override
-  bool isValidFile(List<int> data) => JpegData().validate(data);
+  bool isValidFile(Uint8List data) => JpegData().validate(data);
 
   @override
-  DecodeInfo? startDecode(List<int> bytes) {
+  DecodeInfo? startDecode(Uint8List bytes) {
     input = InputBuffer(bytes, bigEndian: true);
-    info = JpegData().readInfo(bytes);
-    return info;
+    return info = JpegData().readInfo(bytes);
   }
 
   @override
@@ -31,8 +35,7 @@ class JpegDecoder extends Decoder {
     if (input == null) {
       return null;
     }
-    final jpeg = JpegData();
-    jpeg.read(input!.buffer);
+    final jpeg = JpegData()..read(input!.buffer);
     if (jpeg.frames.length != 1) {
       throw ImageException('only single frame JPEGs supported');
     }
@@ -41,29 +44,13 @@ class JpegDecoder extends Decoder {
   }
 
   @override
-  Image? decodeImage(List<int> bytes, {int frame = 0}) {
-    final jpeg = JpegData();
-    jpeg.read(bytes);
+  Image? decode(Uint8List bytes, {int? frame}) {
+    final jpeg = JpegData()..read(bytes);
 
     if (jpeg.frames.length != 1) {
       throw ImageException('only single frame JPEGs supported');
     }
 
     return jpeg.getImage();
-  }
-
-  @override
-  Animation? decodeAnimation(List<int> bytes) {
-    final image = decodeImage(bytes);
-    if (image == null) {
-      return null;
-    }
-
-    final anim = Animation();
-    anim.width = image.width;
-    anim.height = image.height;
-    anim.addFrame(image);
-
-    return anim;
   }
 }

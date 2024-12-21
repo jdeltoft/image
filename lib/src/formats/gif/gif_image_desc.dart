@@ -1,4 +1,4 @@
-import '../../internal/internal.dart';
+import '../../util/_internal.dart';
 import '../../util/input_buffer.dart';
 import 'gif_color_map.dart';
 
@@ -10,7 +10,7 @@ class GifImageDesc {
   late bool interlaced;
   GifColorMap? colorMap;
   int duration = 80;
-  bool clearFrame = true;
+  int disposal = 0;
 
   GifImageDesc(InputBuffer input) {
     x = input.readUint16();

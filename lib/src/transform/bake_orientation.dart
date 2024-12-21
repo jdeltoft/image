@@ -1,5 +1,5 @@
-import '../exif_data.dart';
-import '../image.dart';
+import '../exif/exif_data.dart';
+import '../image/image.dart';
 import 'copy_rotate.dart';
 import 'flip.dart';
 
@@ -9,33 +9,30 @@ import 'flip.dart';
 /// data.
 Image bakeOrientation(Image image) {
   final bakedImage = Image.from(image);
-  if (!image.exif.hasOrientation || image.exif.orientation == 1) {
+  if (!image.exif.imageIfd.hasOrientation ||
+      image.exif.imageIfd.orientation == 1) {
     return bakedImage;
   }
 
   // Copy all exif data except for orientation
-  bakedImage.exif = ExifData();
-  for (var key in image.exif.data.keys) {
-    if (key != ExifData.ORIENTATION) {
-      bakedImage.exif.data[key] = image.exif.data[key];
-    }
-  }
+  bakedImage.exif = ExifData.from(image.exif);
+  bakedImage.exif.imageIfd.orientation = null;
 
-  switch (image.exif.orientation) {
+  switch (image.exif.imageIfd.orientation) {
     case 2:
       return flipHorizontal(bakedImage);
     case 3:
-      return flip(bakedImage, Flip.both);
+      return flip(bakedImage, direction: FlipDirection.both);
     case 4:
-      return flipHorizontal(copyRotate(bakedImage, 180));
+      return flipHorizontal(copyRotate(bakedImage, angle: 180));
     case 5:
-      return flipHorizontal(copyRotate(bakedImage, 90));
+      return flipHorizontal(copyRotate(bakedImage, angle: 90));
     case 6:
-      return copyRotate(bakedImage, 90);
+      return copyRotate(bakedImage, angle: 90);
     case 7:
-      return flipHorizontal(copyRotate(bakedImage, -90));
+      return flipHorizontal(copyRotate(bakedImage, angle: -90));
     case 8:
-      return copyRotate(bakedImage, -90);
+      return copyRotate(bakedImage, angle: -90);
   }
   return bakedImage;
 }
